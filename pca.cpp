@@ -71,9 +71,6 @@ namespace PCA {
 	void adjust_data(Array2D<double>& d, Array1D<double>& means) {
 		double mean;
 		int i, j;
-
-//#		pragma omp parallel for num_threads(thread_count) \
-		default(none) private(i, j, mean) shared(d, means)
 		for (i=0; i<d.dim2(); ++i) { 
 			mean = 0;
 			for (j=0; j<d.dim1(); ++j) {
@@ -96,9 +93,7 @@ namespace PCA {
 		double cov = 0;
 		int k;
 		// note que 'd' já está reduzido pela média
-
-
-		#		pragma omp parallel for reduction(+:cov) //schedule(dynamic,2)
+		#		pragma omp parallel for reduction(+:cov)
 		for (k=0; k<d.dim1(); ++k) {
 			cov += d[k][i] * d[k][j];
 		}
@@ -111,10 +106,10 @@ namespace PCA {
         int i, j;
 		assert(dim == covar_matrix.dim1());
 		assert(dim == covar_matrix.dim2());
-#		pragma omp parallel num_threads(thread_count) \
+	#	pragma omp parallel num_threads(thread_count) \
 		default(none) private(i, j) shared(d, covar_matrix, dim) 
-{
-#		pragma omp for schedule(dynamic,1)
+	{
+	#	pragma omp for schedule(dynamic,1)
         for (i=0; i<dim; ++i) {
 			for (j=i; j<dim; ++j) {
 				// calcular covariância entre i e j
@@ -130,7 +125,7 @@ namespace PCA {
 				covar_matrix[i][j] = covar_matrix[j][i];
 			}
 		}
-}
+	}
 
 	}
 
@@ -145,8 +140,6 @@ namespace PCA {
 	void transpose(const Array2D<double>& src, Array2D<double>& target) {
         int i,j;
 
-//#		pragma omp parallel for num_threads(thread_count) \
-		default(none) private(i, j) shared(src, target) collapse(2)
 		#     	pragma omp for schedule(dynamic,1)
         for (i=0; i<src.dim1(); ++i) {
 			for (j=0; j<src.dim2(); ++j) {
@@ -160,9 +153,7 @@ namespace PCA {
 		assert(x.dim2() == y.dim1());
         int i, j, k, d;
         double sum = 0;
-//#		pragma omp parallel for num_threads(thread_count) \
-		default(none) private(i, j, k) shared(x, y, d, z) \
-		reduction(+:sum) collapse(2)
+
 		#      pragma omp for schedule(dynamic,1)
         for (i=0; i<x.dim1(); ++i) {
 			for (j=0; j<y.dim2(); ++j) {
@@ -183,12 +174,10 @@ namespace PCA {
 		int phase, i, j;
 		double temp, temp2;
 
-//#		pragma omp parallel num_threads(thread_count) \
-		default(none) shared(a_valor, a_vetor, n, featureVector, K) private(i, j, temp, temp2, phase)
         for (phase = 0; phase < n; phase++) {
 			if (phase % 2 == 0) { // fase par
 
-//#           		pragma omp for
+
 				for (i = 1; i < n; i += 2) {
 					if (a_valor[i-1][i-1] < a_valor[i][i]) {
 						temp = a_valor[i][i];
@@ -205,7 +194,6 @@ namespace PCA {
 			} // fim if fase par
 			else { // fase impar
 
-//#           		pragma omp for 
 				for (i = 1; i < n-1; i += 2) {
 					if (a_valor[i][i] < a_valor[i+1][i+1]) {
 						temp = a_valor[i][i];
@@ -223,7 +211,7 @@ namespace PCA {
 		} // fim for fases
 		
 		// selecionar os K primeiros autovetores, mantendo o numero de linhas original.
-//#       	pragma omp for collapse(2)		
+	
 		for (i = 0; i < n; i++) {
 			for (j = 0; j < K; j++) {
 				featureVector[i][j] = a_vetor[i][j];
@@ -235,8 +223,7 @@ namespace PCA {
 	void normalize(Array2D<double>& data, const Array1D<double>& means) {
         int i, j;
 
-//#		pragma omp parallel for num_threads(thread_count) \
-		default(none) private(i, j) shared(data, means) collapse(2)
+
         for (i=0; i<data.dim2(); i++) {
 			for (j=0; j<data.dim1(); j++) {
 				data[j][i] += means[i];
@@ -364,16 +351,6 @@ int main(int argc, char* argv[]) {
     end_k = omp_get_wtime();///////////////////////////////////////////////////////////
 
     
-
-
-
-
-
-
-
-
-
-
 
 
 	double start_trans, end_trans; 
