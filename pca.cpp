@@ -71,6 +71,7 @@ namespace PCA {
 	void adjust_data(Array2D<double>& d, Array1D<double>& means) {
 		double mean;
 		int i, j;
+		#	pragma omp for schedule(dynamic,1)
 		for (i=0; i<d.dim2(); ++i) { 
 			mean = 0;
 			for (j=0; j<d.dim1(); ++j) {
@@ -106,9 +107,7 @@ namespace PCA {
         int i, j;
 		assert(dim == covar_matrix.dim1());
 		assert(dim == covar_matrix.dim2());
-	#	pragma omp parallel num_threads(thread_count) \
-		default(none) private(i, j) shared(d, covar_matrix, dim) 
-	{
+
 	#	pragma omp for schedule(dynamic,1)
         for (i=0; i<dim; ++i) {
 			for (j=i; j<dim; ++j) {
@@ -125,7 +124,7 @@ namespace PCA {
 				covar_matrix[i][j] = covar_matrix[j][i];
 			}
 		}
-	}
+	//}
 
 	}
 
@@ -173,10 +172,9 @@ namespace PCA {
 		int n = a_valor.dim1(); // col
 		int phase, i, j;
 		double temp, temp2;
-
+		#       	pragma omp for 
         for (phase = 0; phase < n; phase++) {
 			if (phase % 2 == 0) { // fase par
-
 
 				for (i = 1; i < n; i += 2) {
 					if (a_valor[i-1][i-1] < a_valor[i][i]) {
@@ -193,7 +191,6 @@ namespace PCA {
 				} // fim for i
 			} // fim if fase par
 			else { // fase impar
-
 				for (i = 1; i < n-1; i += 2) {
 					if (a_valor[i][i] < a_valor[i+1][i+1]) {
 						temp = a_valor[i][i];
@@ -211,7 +208,7 @@ namespace PCA {
 		} // fim for fases
 		
 		// selecionar os K primeiros autovetores, mantendo o numero de linhas original.
-	
+		#      pragma omp for schedule(dynamic,1)
 		for (i = 0; i < n; i++) {
 			for (j = 0; j < K; j++) {
 				featureVector[i][j] = a_vetor[i][j];
@@ -279,14 +276,19 @@ int main(int argc, char* argv[]) {
     }
 	using namespace PCA;
 	
-
-
-    double start_time, end_time;
-
-	string filename = argv[1];
-	thread_count = strtol(argv[2], NULL, 10);
 	
-	// informação do banco de dados
+	double inicio_var,fim_var;
+    double start_time, end_time;
+    double start_k, end_k; 
+    double start_cov, end_cov;
+    double start_subtrair, end_subtrair; 
+    double start_eigen, end_eigen;  
+    double start_trans, end_trans; 
+    inicio_var= omp_get_wtime();
+
+    string filename = argv[1];
+	thread_count = strtol(argv[2], NULL, 10);
+		// informação do banco de dados
     int dim = get_dimension_from_filename(filename);
     int K = strtol(argv[3], NULL, 10);
     
@@ -296,82 +298,68 @@ int main(int argc, char* argv[]) {
     const int col = dim; // numero de dimensões
     //const int col = 2; // numero de dimensões
 
-    Array2D<double> d(row, col); // matriz de dados 
-    load_data_from_file(d, argv[1]); // carrega a matriz de dados
-
-
-
-    start_time = omp_get_wtime(); ////////////////////////////////////////////////////////
-
-
-
-	double start_subtrair, end_subtrair; 
-
-	start_subtrair = omp_get_wtime();////////////////////////////////////////////////////
-
     Array1D<double> means(col);
-    adjust_data(d, means); // subtrai as médias
-
-    end_subtrair = omp_get_wtime();///////////////////////////////////////////////////////////
-	
-	
-	double start_cov, end_cov; 
-
-	start_cov = omp_get_wtime();////////////////////////////////////////////////////
-
     Array2D<double> covar_matrix(col, col);
-    compute_covariance_matrix(d, covar_matrix); // computa matriz de covariância
-    end_cov = omp_get_wtime();///////////////////////////////////////////////////////////
-
-
-
-
-	double start_eigen, end_eigen;  
-	
-    // obter os autovetores e autovalores através da matriz de covariância.
+     // obter os autovetores e autovalores através da matriz de covariância.
     Array2D<double> eigenvector(col, col);
     Array2D<double> eigenvalue(col, col);
-
-
-	start_eigen = omp_get_wtime();////////////////////////////////////////////////////
-    eigen(covar_matrix, eigenvector, eigenvalue);
-
-    end_eigen = omp_get_wtime();///////////////////////////////////////////////////////////
-
-
-
-
-	double start_k, end_k; 
-
-	start_k = omp_get_wtime();////////////////////////////////////////////////////	
-	// determinar o featureVector reduzindo os eigenvectors principais em K eigenvectors.
-	// resultado possui K colunas (dimensões)
-	Array2D<double> featureVector(col, K);
-	choose_components(eigenvalue, eigenvector, featureVector, K);	
-    end_k = omp_get_wtime();///////////////////////////////////////////////////////////
-
-    
-
-
-	double start_trans, end_trans; 
-
-	start_trans = omp_get_wtime();////////////////////////////////////////////////////	
-    // final_data^T = FeatureVector^T * DataAdjustada^T
-	// sendo final_data a matriz calculada com os melhores eigenvectors
+    Array2D<double> featureVector(col, K);
+	
     Array2D<double> fd_transp(K, row);
 	Array2D<double> final_data(row, K);
 	Array2D<double> transpose_featV(K, col);
     Array2D<double> transpose_data(col, row);
-	#		pragma omp parallel num_threads(thread_count)
-	{
-		transpose(featureVector, transpose_featV);
-    	transpose(d, transpose_data);
-    	multiply(transpose_featV, transpose_data, fd_transp);
-		transpose(fd_transp, final_data); // forma original, cada coluna é uma dimensão.	
-	}
+
+	
+	
+
+    Array2D<double> d(row, col); // matriz de dados 
+    fim_var=omp_get_wtime();
+    load_data_from_file(d, argv[1]); // carrega a matriz de dados
+
+    start_time = omp_get_wtime(); ////////////////////////////////////////////////////////
+
+    #	pragma omp parallel num_threads(thread_count)
+    {
+	
+
+	start_subtrair = omp_get_wtime();////////////////////////////////////////////////////
+    adjust_data(d, means); // subtrai as médias
+    end_subtrair = omp_get_wtime();///////////////////////////////////////////////////////////
+	 
+
+	start_cov = omp_get_wtime();////////////////////////////////////////////////////
+
+    
+    compute_covariance_matrix(d, covar_matrix); // computa matriz de covariância
+    end_cov = omp_get_wtime();///////////////////////////////////////////////////////////
+
+
+	
+	start_eigen = omp_get_wtime();////////////////////////////////////////////////////
+     # pragma omp single 
+    eigen(covar_matrix, eigenvector, eigenvalue);
+    end_eigen = omp_get_wtime();///////////////////////////////////////////////////////////
+
+	start_k = omp_get_wtime();////////////////////////////////////////////////////	
+	// determinar o featureVector reduzindo os eigenvectors principais em K eigenvectors.
+	// resultado possui K colunas (dimensões)
+	choose_components(eigenvalue, eigenvector, featureVector, K);	
+    end_k = omp_get_wtime();///////////////////////////////////////////////////////////
+    
+	# pragma omp barrier 
+
+	start_trans = omp_get_wtime();////////////////////////////////////////////////////	
+    // final_data^T = FeatureVector^T * DataAdjustada^T
+	// sendo final_data a matriz calculada com os melhores eigenvectors
+   
+	transpose(featureVector, transpose_featV);
+    transpose(d, transpose_data);
+    multiply(transpose_featV, transpose_data, fd_transp);
+	transpose(fd_transp, final_data); // forma original, cada coluna é uma dimensão.	
     end_trans = omp_get_wtime();///////////////////////////////////////////////////////
 
-
+}
 
     end_time = omp_get_wtime();///////////////////////////////////////////////////////
 	export_array(final_data, "teste.out");
@@ -381,6 +369,6 @@ int main(int argc, char* argv[]) {
     cout << "--------------" << endl;
     cout << "Threads/Dimension/K: " << thread_count << " / " << dim << " / " << K << endl;	    
     cout << "Tempo total:" << end_time-start_time <<endl<< "Tempo subtração media: " << end_subtrair-start_subtrair <<endl<< "Tempo covariancia: " << end_cov-start_cov <<endl<< "Tempo escolha K: " << end_k-start_k <<endl<< "Tempo do auto valor e auto vetor " << end_eigen-start_eigen <<endl<< "Tempo transpor matriz: " << end_trans-start_trans <<endl<<"Tempo restante final: " << (end_time-start_time)-(end_eigen-start_eigen)-(end_subtrair-start_subtrair)-(end_cov-start_cov)-(end_k-start_k)-(end_trans-start_trans) << endl;
-    
+    cout << " Tempo de criar variaveis " << fim_var-inicio_var << endl;
     return 0;
 }
