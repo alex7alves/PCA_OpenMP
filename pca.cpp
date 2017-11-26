@@ -122,8 +122,9 @@ namespace PCA {
 			}
 		}
 
-#       	pragma omp for schedule(dynamic,2) //collapse(2)
+
 		// fill the Left triangular matrix
+		#       	pragma omp for schedule(dynamic,2)
 		for (i=1; i<dim; i++) {
 			for (j=0; j<i; ++j) {
 				covar_matrix[i][j] = covar_matrix[j][i];
@@ -146,6 +147,7 @@ namespace PCA {
 
 //#		pragma omp parallel for num_threads(thread_count) \
 		default(none) private(i, j) shared(src, target) collapse(2)
+		#     	pragma omp for schedule(dynamic,2)
         for (i=0; i<src.dim1(); ++i) {
 			for (j=0; j<src.dim2(); ++j) {
 				target[j][i] = src[i][j];
@@ -161,6 +163,7 @@ namespace PCA {
 //#		pragma omp parallel for num_threads(thread_count) \
 		default(none) private(i, j, k) shared(x, y, d, z) \
 		reduction(+:sum) collapse(2)
+		#      pragma omp for schedule(dynamic,2)
         for (i=0; i<x.dim1(); ++i) {
 			for (j=0; j<y.dim2(); ++j) {
 				sum = 0;
@@ -382,12 +385,13 @@ int main(int argc, char* argv[]) {
 	Array2D<double> final_data(row, K);
 	Array2D<double> transpose_featV(K, col);
     Array2D<double> transpose_data(col, row);
-	
-	transpose(featureVector, transpose_featV);
-    transpose(d, transpose_data);
-    multiply(transpose_featV, transpose_data, fd_transp);
-	transpose(fd_transp, final_data); // forma original, cada coluna é uma dimensão.	
-	
+	#		pragma omp parallel num_threads(thread_count)
+	{
+		transpose(featureVector, transpose_featV);
+    	transpose(d, transpose_data);
+    	multiply(transpose_featV, transpose_data, fd_transp);
+		transpose(fd_transp, final_data); // forma original, cada coluna é uma dimensão.	
+	}
     end_trans = omp_get_wtime();///////////////////////////////////////////////////////
 
 
