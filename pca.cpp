@@ -341,13 +341,14 @@ int main(int argc, char* argv[]) {
     eigen(covar_matrix, eigenvector, eigenvalue);
     end_eigen = omp_get_wtime();///////////////////////////////////////////////////////////
 
+    # pragma omp barrier 
 	start_k = omp_get_wtime();////////////////////////////////////////////////////	
 	// determinar o featureVector reduzindo os eigenvectors principais em K eigenvectors.
 	// resultado possui K colunas (dimensões)
 	choose_components(eigenvalue, eigenvector, featureVector, K);	
     end_k = omp_get_wtime();///////////////////////////////////////////////////////////
     
-	# pragma omp barrier 
+	
 
 	start_trans = omp_get_wtime();////////////////////////////////////////////////////	
     // final_data^T = FeatureVector^T * DataAdjustada^T
