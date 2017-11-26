@@ -114,7 +114,7 @@ namespace PCA {
 #		pragma omp parallel num_threads(thread_count) \
 		default(none) private(i, j) shared(d, covar_matrix, dim) 
 {
-#		pragma omp for schedule(dynamic,2)
+#		pragma omp for schedule(dynamic,1)
         for (i=0; i<dim; ++i) {
 			for (j=i; j<dim; ++j) {
 				// calcular covariância entre i e j
@@ -124,7 +124,7 @@ namespace PCA {
 
 
 		// fill the Left triangular matrix
-		#       	pragma omp for schedule(dynamic,2)
+		#       	pragma omp for schedule(dynamic,1)
 		for (i=1; i<dim; i++) {
 			for (j=0; j<i; ++j) {
 				covar_matrix[i][j] = covar_matrix[j][i];
@@ -147,7 +147,7 @@ namespace PCA {
 
 //#		pragma omp parallel for num_threads(thread_count) \
 		default(none) private(i, j) shared(src, target) collapse(2)
-		#     	pragma omp for schedule(dynamic,2)
+		#     	pragma omp for schedule(dynamic,1)
         for (i=0; i<src.dim1(); ++i) {
 			for (j=0; j<src.dim2(); ++j) {
 				target[j][i] = src[i][j];
@@ -163,7 +163,7 @@ namespace PCA {
 //#		pragma omp parallel for num_threads(thread_count) \
 		default(none) private(i, j, k) shared(x, y, d, z) \
 		reduction(+:sum) collapse(2)
-		#      pragma omp for schedule(dynamic,2)
+		#      pragma omp for schedule(dynamic,1)
         for (i=0; i<x.dim1(); ++i) {
 			for (j=0; j<y.dim2(); ++j) {
 				sum = 0;
